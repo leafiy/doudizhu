@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+    .梅花 {}
+
+    .card {
+        padding: 0 2px;
+        margin: 0 5px;
+    }
+
+    .大王 {
+        background-color: red;
+        color: #fff;
+    }
+
+    .小王 {
+        background-color: red;
+        color: #eee;
+    }
+
+    button {
+        border-radius: 0;
+        background-color: #000;
+        color: #fff;
+        border: none;
+    }
+    .lord{
+        background-color: #eee
+    }
+    </style>
+</head>
+
+<body>
+    <button id="start">发牌</button>
+    <div id="reserve-cards"></div>
+    <div id="cards"></div>
+    <script src="mustache.js"></script>
+    <script src="underscore.js"></script>
+    <script>
+    (function(root, factory) {
+        if (typeof define === 'function' && define.amd) {
+            // AMD. Register as an anonymous module.
+            define(['b'], factory);
+        } else {
+            // Browser globals
+            root.LandLorder = factory(root.b);
+        }
+    }(this, function(b) {
+
+
+
+
+        function LandLorder() {
+            this.allCards = [];
+            this.startButton = document.getElementById('start');
+            this.reserveCardsEl = document.getElementById('reserve-cards');
+            this.cardsEL = document.getElementById('cards');
+            this.cardsWithType = {};
+            this.player = {
+                player1: {},
+                player2: {},
+                player3: {}
+            };
+            this.typesArray = {
+                1: '梅花',
+                2: '方块',
+                3: '黑桃',
+                4: '红桃',
+                5: '大王',
+                6: '小王'
+            }
+            this.init();
+
+        }
+
+        function LandLoderUI() {
+
+        }
+
+        LandLorder.prototype.init = function() {
+            this.cards();
+            this.events();
+            return this;
+        }
+
+        LandLorder.prototype.cards = function() {
+            var card, i, m;
+            for (i = 1; i <= 4; i++) {
+                for (m = 1; m <= 13; m++) {
+                    card = i.toString() + (m < 10 ? '0' + m : m);
+                    this.allCards.push(Number(card));
+                }
+            }
+            this.allCards.push(500, 600)
+
+            return this.allCards;
+        };
+
+        LandLorder.prototype.getRandomInt = function(max) {
+            return Math.floor(Math.random() * (max + 1));
+        }
+
+
+
+        LandLorder.prototype.genCards = function(num) {
+            var cardsToGen = [],
+                rand,
+                allCards = this.allCards,
+                len = allCards.length;
+            for (var i = 0; i < num; i++) {
+                len--
+                rand = this.getRandomInt(len);
+                cardsToGen = cardsToGen.concat(allCards.splice(rand, 1))
+            }
+            this.sortCards(cardsToGen);
+            return cardsToGen;
+        }
+
+        LandLorder.prototype.sortCards = function(cards) {
+
+            cards.sort(function(a, b) {
+                // if (a > 400 || b > 400) {
+                //     return
+                // }
+                a = a % 100;
+                b = b % 100;
+                return a - b;
+            })
+            return cards;
+        }
+
+        LandLorder.prototype.claimLord = function(playerName) {
+            var player = this.player;
+            player[playerName].isLord = true;
+
+            player[playerName].cards = player[playerName].cards.concat(this.reserveCardsObj.cards)
+            this.reserveCardsEl.style.display = 'none';
+            this.renderLordCard(player[playerName].cards, playerName);
+            return player;
+        }
+
+        LandLorder.prototype.renderLordCard = function(cards, playerName) {
+            cards = _.sortBy(cards, 'name')
+
+            var p = document.getElementById(playerName);
+            p.classList.add('lord')
+            var template = '{{#cards}} <span class="card {{type}} {{type}}_{{name}}" id=card_{{id}}>{{type}}{{name}} </span> {{/cards}}';
+            var data = {
+                cards:cards
+            }
+            var html = Mustache.render(template,data)
+            p.innerHTML = html;
+        }
+
+
+        LandLorder.prototype.events = function() {
+            var start = this.startButton;
+            var that = this;
+            start.addEventListener('click', function() {
+                that.getCardsType();
+                this.style.display = 'none'
+            })
+
+        }
+
+        LandLorder.prototype.dealCards = function(callback) {
+
+            var cards = this.cardsWithType;
+            var arr = [];
+            var reserveCards = this.genCards(3);
+            for (var i = 0; i < reserveCards.length; i++) {
+                arr.push(cards[reserveCards[i]])
+            }
+            var reserveCardsObj = {
+                cards: arr
+            }
+            this.reserveCardsObj = reserveCardsObj;
+            var reserveCardsHtml = '{{#cards}}<span class="card">{{type}}{{name}}</span>{{/cards}}';
+            reserveCardsHtml = Mustache.render(reserveCardsHtml, reserveCardsObj);
+            this.reserveCardsEl.innerHTML = reserveCardsHtml;
+            var player = {};
+            var playerTemplate = '';
+            for (var i = 1; i <= 3; i++) {
+                var name = 'player' + i;
+                player[name] = {};
+                player[name].cards = [];
+                var tmpArr = this.genCards(17);
+                for (var m = 0; m < 17; m++) {
+                    player[name].cards.push(cards[tmpArr[m]])
+                }
+
+                playerTemplate += '{{#' + name + '}}<p id=' + name + '>{{#cards}} <span class="card {{type}} {{type}}_{{name}}" id=card_{{id}}>{{type}}{{name}} </span> {{/cards}}</p>{{/' + name + '}}'
+                this.player[name] = player[name]
+
+            }
+            var playerHTML = Mustache.render(playerTemplate, player)
+            this.cardsEL.innerHTML = playerHTML
+            if (callback) {
+                callback();
+            }
+        }
+
+        LandLorder.prototype.getCardsType = function() {
+            var cards = this.allCards;
+            var nameTypes = {
+                11: 'J',
+                12: 'Q',
+                13: 'K',
+                00: '大王',
+                01: '小王'
+            }
+            for (var i = 0; i < cards.length; i++) {
+
+                var typeId = Math.floor(cards[i] / 100);
+                var type = this.typesArray[typeId];
+                var num = Number(cards[i].toString().substr(1, 2));
+                this.cardsWithType[cards[i]] = {
+                    type: type,
+                    id: cards[i],
+                    num: cards[i] < 500 ? num : cards[i],
+                    name: num > 10 ? nameTypes[num] : num
+
+                }
+            }
+            var that = this;
+            this.dealCards(function() {
+                that.renderPlayground()
+            })
+        }
+
+
+        LandLorder.prototype.renderPlayground = function() {
+            var claimButton = document.createElement('button');
+            var order = this.getRandomInt(3);
+            if (order == 0) order = 1;
+            var p = document.getElementById('player' + order);
+            var that = this;
+            claimButton.id = 'claim';
+            claimButton.innerHTML = '叫地主';
+            claimButton.dataset.playerName = 'player' + order;
+            p.appendChild(claimButton)
+            claimButton.addEventListener('click', function() {
+                var playerName = this.dataset.playerName;
+                that.claimLord(playerName)
+            })
+
+        }
+
+        return LandLorder;
+
+    }));
+    </script>
+    <script>
+    var ddz = new LandLorder();
+    </script>
+</body>
+
+</html>
